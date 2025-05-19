@@ -21,7 +21,6 @@ pipeline {
       steps {
         sh 'java -version'
         sh './mvnw clean package'
-'
       }
     }
 
