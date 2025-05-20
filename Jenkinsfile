@@ -32,7 +32,7 @@ pipeline {
             app.push("latest_${env.BUILD_ID}")
           }
 
-          sh """docker rmi 166132032896.dkr.ecr.ap-northeast-2.amazonaws.com/new_name_auction:latest_${env.BUILD_ID}"""
+          sh """docker rmi 590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops:latest_${env.BUILD_ID}"""
         }
       }
     }
