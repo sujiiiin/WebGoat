@@ -1,42 +1,49 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    AWS_ACCOUNT_ID = '590715976556'   // ← 본인 계정으로 변경
-    REGION = 'ap-northeast-2'
-    IMAGE_NAME = "${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/webgoat"
-  }
-
-  stages {
-    stage('Checkout') {
-      steps {
-        git url: 'https://github.com/your-username/webgoat.git', branch: 'develop'
-      }
+    environment {
+        AWS_REGION = 'ap-northeast-2'
+        ECR_REPO = '590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops'
+        IMAGE_TAG = 'latest'
     }
 
-    stage('Docker Build & Push') {
-      steps {
-        script {
-          sh """
-            echo '🔐 ECR 로그인'
-            aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $IMAGE_NAME
-
-            echo '🔧 Docker 이미지 빌드'
-            docker build -t webgoat .
-
-            echo '📦 이미지 태깅 및 푸시'
-            docker tag webgoat:latest $IMAGE_NAME:latest
-            docker push $IMAGE_NAME:latest
-          """
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-      }
-    }
 
-    // 선택 사항
-    stage('Notify or Deploy') {
-      steps {
-        echo '🎯 ECR 푸시 완료 후 추가 작업 (예: CodeDeploy 배포 트리거)'
-      }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+            }
+        }
+
+        stage('Login to AWS ECR') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: '1df06cbe-4aa6-412f-aca9-1a4efc3a067f', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                        aws configure set region $AWS_REGION
+
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+                    '''
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh 'docker push $ECR_REPO:$IMAGE_TAG'
+            }
+        }
     }
-  }
 }
