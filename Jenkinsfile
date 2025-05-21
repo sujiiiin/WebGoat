@@ -1,40 +1,49 @@
 pipeline {
-  agent any
+    agent any
 
-  tools {
-    jdk 'jdk17'
-  }
-
-  environment {
-    JAVA_HOME = 'tool jdk17'
-    IMAGE_NAME = "my-image-${env.BUILD_ID}"
-  }
-
-  stages {
-    stage('checkout') {
-      steps {
-        checkout scm
-      }
+    environment {
+        AWS_REGION = 'ap-northeast-2'
+        ECR_REPO = '590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops'
+        IMAGE_TAG = 'latest'
     }
 
-    stage('build') {
-      steps {
-        sh 'java -version'
-        sh './mvnw clean package'
-      }
-    }
-
-    stage('Push image') {
-      steps {
-        script {
-          docker.withRegistry('590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops', 'ecr:ap-northeast-2:1df06cbe-4aa6-412f-aca9-1a4efc3a067f') {
-            app = docker.build("590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops")
-            app.push("latest_${env.BUILD_ID}")
-          }
-
-          sh """docker rmi 590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops:latest_${env.BUILD_ID}"""
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-      }
+
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+            }
+        }
+
+        stage('Login to AWS ECR') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: '1df06cbe-4aa6-412f-aca9-1a4efc3a067f', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                        aws configure set region $AWS_REGION
+
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+                    '''
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh 'docker push $ECR_REPO:$IMAGE_TAG'
+            }
+        }
     }
-  }
 }
