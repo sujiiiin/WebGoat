@@ -11,14 +11,6 @@ pipeline {
         DEPLOY_GROUP = "test1-deploy-group"
         REGION = "ap-northeast-2"
         BUNDLE = "webgoat-deploy-bundle.zip"
-        ECR_REPO        
-				IMAGE_TAG
-				JAVA_HOME
-				S3_BUCKET
-				DEPLOY_APP
-				DEPLOY_GROUP
-				REGION
-				BUNDLE
     }
 
     stages {
