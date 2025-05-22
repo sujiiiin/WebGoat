@@ -4,7 +4,7 @@ pipeline {
     environment {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
-        JAVA_HOME = "/opt/jdk-23"
+        JAVA_HOME = "/usr/lib/jvm/java-17-amazon-corretto.x86_64/bin/java"
         PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
         S3_BUCKET = "whs-tests3"
         DEPLOY_APP = "test1-CodeDeploy"
