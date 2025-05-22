@@ -2,48 +2,142 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'ap-northeast-2'
-        ECR_REPO = '590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops'
-        IMAGE_TAG = 'latest'
+        ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
+        IMAGE_TAG = "latest"
+        JAVA_HOME = "/opt/jdk-23"
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+        S3_BUCKET = "whs-tests3"
+        DEPLOY_APP = "test1-CodeDeploy"
+        DEPLOY_GROUP = "test1-deploy-group"
+        REGION = "ap-northeast-2"
+        BUNDLE = "webgoat-deploy-bundle.zip"
+        ECR_REPO        // ECR에 푸시할 이미지 경로
+				IMAGE_TAG       // 태그명 (latest)
+				JAVA_HOME       // JDK 경로
+				S3_BUCKET       // CodeDeploy용 번들을 저장할 S3 버킷
+				DEPLOY_APP      // CodeDeploy 애플리케이션 이름
+				DEPLOY_GROUP    // CodeDeploy 배포 그룹 이름
+				REGION          // AWS 리전
+				BUNDLE          // 생성할 배포 번들 zip 파일명
     }
 
     stages {
-        stage('Checkout') {
+        stage('📦 Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Maven Build') {
+        stage('🔨 Build JAR') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('🐳 Docker Build') {
             steps {
-                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+                sh '''
+                docker build -t $ECR_REPO:$IMAGE_TAG .
+                '''
             }
         }
 
-        stage('Login to AWS ECR') {
+        stage('🔐 ECR Login') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'aws-login', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh '''
-                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-                        aws configure set region $AWS_REGION
+                sh '''
+                aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REPO
+                '''
+            }
+        }
 
-                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
-                    '''
+        stage('🚀 Push to ECR') {
+            steps {
+                sh 'docker push $ECR_REPO:$IMAGE_TAG'
+            }
+        }
+
+        stage('🧩 Generate taskdef.json') {
+            steps {
+                script {
+                    def taskdef = """{
+  "family": "webgoat-taskdef",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "webgoat",
+      "image": "${ECR_REPO}:${IMAGE_TAG}",
+      "memory": 512,
+      "cpu": 256,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::590715976556:role/ecsTaskExecutionRole"
+}"""
+                    writeFile file: 'taskdef.json', text: taskdef
                 }
             }
         }
 
-        stage('Push to ECR') {
+        stage('📄 Generate appspec.yaml') {
             steps {
-                sh 'docker push $ECR_REPO:$IMAGE_TAG'
+                script {
+                    def taskDefArn = sh(
+                        script: "aws ecs register-task-definition --cli-input-json file://taskdef.json --query 'taskDefinition.taskDefinitionArn' --region $REGION --output text",
+                        returnStdout: true
+                    ).trim()
+
+                    def appspec = """version: 1
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: "${taskDefArn}"
+        LoadBalancerInfo:
+          ContainerName: "webgoat"
+          ContainerPort: 8080
+"""
+                    writeFile file: 'appspec.yaml', text: appspec
+                }
             }
+        }
+
+        stage('📦 Bundle for CodeDeploy') {
+            steps {
+                sh 'zip -r $BUNDLE appspec.yaml Dockerfile taskdef.json'
+            }
+        }
+
+        stage('🚀 Deploy via CodeDeploy') {
+            steps {
+                sh '''
+                aws s3 cp $BUNDLE s3://$S3_BUCKET/$BUNDLE --region $REGION
+
+                aws deploy create-deployment \
+                  --application-name $DEPLOY_APP \
+                  --deployment-group-name $DEPLOY_GROUP \
+                  --deployment-config-name CodeDeployDefault.ECSAllAtOnce \
+                  --s3-location bucket=$S3_BUCKET,bundleType=zip,key=$BUNDLE \
+                  --region $REGION
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Successfully built, pushed, and deployed!"
+        }
+        failure {
+            echo "❌ Build or deployment failed. Check logs!"
         }
     }
 }
