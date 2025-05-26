@@ -32,10 +32,21 @@ pipeline {
             steps {
                 sh '''
                 echo "▶️ Running Trivy vulnerability scan..."
-                trivy image --exit-code 0 --severity HIGH,CRITICAL --format table $ECR_REPO:$IMAGE_TAG
+
+                # 1. 디스크 기반 TMPDIR 설정
+                export TMPDIR=/var/lib/jenkins/trivy-tmp
+                mkdir -p $TMPDIR
+
+                # 2. Trivy 캐시 디렉토리도 변경하면 더 좋음
+                export TRIVY_CACHE_DIR=/var/lib/jenkins/trivy-cache
+                mkdir -p $TRIVY_CACHE_DIR
+
+                # 3. Trivy 실행
+                trivy image --cache-dir $TRIVY_CACHE_DIR --exit-code 0 --severity HIGH,CRITICAL --format table $ECR_REPO:$IMAGE_TAG
                 '''
             }
         }
+
 
         stage('🔐 ECR Login') {
             steps {
