@@ -62,6 +62,7 @@ pipeline {
                     aws lambda invoke \
                         --function-name $LAMBDA_FUNC \
                         --region $REGION \
+                        --cli-binary-format raw-in-base64-out
                         --payload file://lambda-payload.json \
                         lambda-response.json
 
