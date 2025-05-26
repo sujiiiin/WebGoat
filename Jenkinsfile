@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+
 pipeline {
     agent any
 
@@ -47,23 +49,23 @@ pipeline {
         stage('📡 Trigger Trivy Lambda') {
             steps {
                 script {
-                    def payload = """
-                    {
-                        "image": "${ECR_REPO}:${IMAGE_TAG}",
-                        "repo": "${REPO_URL}",
-                        "scan_id": "build-${env.BUILD_ID}"
-                    }
-                    """
-
-                    writeFile file: 'lambda-payload.json', text: payload
+                    def payloadObj = [
+                        image: "${ECR_REPO}:${IMAGE_TAG}",
+                        repo: "${REPO_URL}",
+                        scan_id: "build-${env.BUILD_ID}"
+                    ]
+                    def payloadJson = JsonOutput.toJson(payloadObj)
+                    writeFile file: 'lambda-payload.json', text: payloadJson
 
                     sh '''
+                    echo "▶️ Lambda 함수 호출 중..."
                     aws lambda invoke \
                         --function-name $LAMBDA_FUNC \
                         --region $REGION \
                         --payload file://lambda-payload.json \
                         lambda-response.json
 
+                    echo "📄 Lambda 응답 내용:"
                     cat lambda-response.json
                     '''
                 }
@@ -76,7 +78,7 @@ pipeline {
             echo "✅ 이미지 빌드, ECR 푸시 및 Trivy Lambda 트리거 성공!"
         }
         failure {
-            echo "❌ 빌드 실패! 로그 확인 필요"
+            echo "❌ 실패! 로그 확인 필요"
         }
     }
 }
