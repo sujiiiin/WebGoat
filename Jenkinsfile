@@ -31,16 +31,17 @@ pipeline {
         stage('🔍 Trivy Scan') {
             steps {
                 sh '''
-                echo "▶️ Running Trivy vulnerability scan..."
+                echo "▶️ Running Trivy vulnerability scan with secret scan enabled..."
 
+                # 임시 저장소와 캐시 경로 설정
                 export TMPDIR=/var/lib/jenkins/trivy-tmp
                 export TRIVY_CACHE_DIR=/var/lib/jenkins/trivy-cache
                 mkdir -p $TMPDIR $TRIVY_CACHE_DIR
 
+                # 트리비 실행 - secret 스캔 유지 + 타임아웃 연장
                 trivy image \
                   --cache-dir $TRIVY_CACHE_DIR \
                   --timeout 15m \
-                  --scanners vuln \
                   --exit-code 0 \
                   --severity HIGH,CRITICAL \
                   --format table \
@@ -48,6 +49,7 @@ pipeline {
                 '''
             }
         }
+
 
 
 
