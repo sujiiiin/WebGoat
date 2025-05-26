@@ -1,5 +1,3 @@
-import groovy.json.JsonOutput
-
 pipeline {
     agent any
 
@@ -7,7 +5,9 @@ pipeline {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
-        LAMBDA_FUNC = "TriggerTrivyScan"
+        FUNCTION_NAME = "TriggerTrivyScan"
+        PAYLOAD_FILE = "lambda-payload.json"
+        RESPONSE_FILE = "lambda-response.json"
         REPO_URL = "https://github.com/sujiiiin/WebGoat.git"
     }
 
@@ -49,26 +49,35 @@ pipeline {
         stage('📡 Trigger Trivy Lambda') {
             steps {
                 script {
-                    def payloadObj = [
-                        image: "${ECR_REPO}:${IMAGE_TAG}",
-                        repo: "${REPO_URL}",
-                        scan_id: "build-${env.BUILD_ID}"
-                    ]
-                    def payloadJson = JsonOutput.toJson(payloadObj)
-                    writeFile file: 'lambda-payload.json', text: payloadJson
+                    def scanId = "build-${env.BUILD_NUMBER}"
 
-                    sh '''
-                    echo "▶️ Lambda 함수 호출 중..."
-                    aws lambda invoke \
-                        --function-name $LAMBDA_FUNC \
-                        --region $REGION \
-                        --cli-binary-format raw-in-base64-out \
-                        --payload file://lambda-payload.json \
-                        lambda-response.json
+                    writeFile file: "${PAYLOAD_FILE}", text: """
+                    {
+                        "image": "${ECR_REPO}:${IMAGE_TAG}",
+                        "repo": "${REPO_URL}",
+                        "scan_id": "${scanId}"
+                    }
+                    """.stripIndent().trim()
 
-                    echo "📄 Lambda 응답 내용:"
-                    cat lambda-response.json
-                    '''
+                    echo '▶️ Lambda 함수 호출 중...'
+
+                    def result = sh(
+                        script: """
+                            aws lambda invoke \
+                              --function-name ${FUNCTION_NAME} \
+                              --region ${REGION} \
+                              --cli-binary-format raw-in-base64-out \
+                              --payload file://${PAYLOAD_FILE} \
+                              ${RESPONSE_FILE}
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (result != 0) {
+                        error("❌ Lambda 호출 실패! 종료 코드: ${result}")
+                    } else {
+                        echo "✅ Lambda 호출 성공!"
+                    }
                 }
             }
         }
@@ -76,10 +85,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ 이미지 빌드, ECR 푸시 및 Trivy Lambda 트리거 성공!"
+            echo "🎉 전체 빌드 및 Trivy Lambda 호출 성공!"
         }
         failure {
-            echo "❌ 실패! 로그 확인 필요"
+            echo "❌ 빌드 실패! 로그 확인 필요"
         }
     }
 }
