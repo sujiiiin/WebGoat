@@ -55,7 +55,8 @@ pipeline {
                     {
                         "image": "${ECR_REPO}:${IMAGE_TAG}",
                         "repo": "${REPO_URL}",
-                        "scan_id": "${scanId}"
+                        "scan_id": "${scanId}",
+                        "generate_sbom": true
                     }
                     """.stripIndent().trim()
 
