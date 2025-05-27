@@ -33,7 +33,7 @@ pipeline {
 
         stage('📄 Generate SBOM') {
             steps {
-                sh 'syft $ECR_REPO:$IMAGE_TAG -o cyclonedx-json --name webgoat --version 1.0.0 > sbom.json'
+                sh 'syft $ECR_REPO:$IMAGE_TAG -o cyclonedx-json > sbom.json'
             }
         }
 
