@@ -6,7 +6,7 @@ pipeline {
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
         REPO_URL = "https://github.com/sujiiiin/WebGoat.git"
-        DEP_TRACK_URL = "http://43.201.22.52:8081/api/v1/bom"
+        DEP_TRACK_URL = "http://13.125.17.184:8081/api/v1/bom"
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
     }
 
