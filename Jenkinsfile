@@ -5,18 +5,19 @@ pipeline {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
+        REPO_URL = "https://github.com/sujiiiin/WebGoat.git"
         DEP_TRACK_URL = "http://43.201.22.52:8081/api/v1/bom"
-        DEP_TRACK_API_KEY = credentials('dependency-track-api-key') // Jenkins에 저장된 API 키
+        DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
     }
 
     stages {
-        stage('📦 Git Checkout') {
+        stage('📦 Checkout') {
             steps {
-                git 'https://github.com/sujiiiin/WebGoat.git'
+                checkout scm
             }
         }
 
-        stage('🔨 Maven Build') {
+        stage('🔨 Build JAR') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
@@ -24,7 +25,9 @@ pipeline {
 
         stage('🐳 Docker Build') {
             steps {
-                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+                sh '''
+                docker build -t $ECR_REPO:$IMAGE_TAG .
+                '''
             }
         }
 
@@ -37,8 +40,7 @@ pipeline {
         stage('🔐 ECR Login') {
             steps {
                 sh '''
-                aws ecr get-login-password --region $REGION |
-                docker login --username AWS --password-stdin $ECR_REPO
+                aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REPO
                 '''
             }
         }
@@ -66,7 +68,7 @@ pipeline {
             echo "🎉 빌드 + ECR 푸시 + SBOM 업로드 완료!"
         }
         failure {
-            echo "❌ 실패! 로그 확인 필요"
+            echo "❌ 빌드 실패! 로그 확인 필요"
         }
     }
 }
