@@ -5,7 +5,7 @@ pipeline {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
-        DEP_TRACK_URL = "http://<EC2-PUBLIC-IP>:8081/api/v1/bom"
+        DEP_TRACK_URL = "http://43.201.22.52:8081/api/v1/bom"
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key') // Jenkins에 저장된 API 키
     }
 
