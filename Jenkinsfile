@@ -33,9 +33,14 @@ pipeline {
 
         stage('📄 Generate SBOM') {
             steps {
-                sh 'trivy image --format cyclonedx --output sbom.json $ECR_REPO:$IMAGE_TAG'
+                sh '''
+                export TRIVY_CACHE_DIR=$WORKSPACE/.trivycache
+                mkdir -p $TRIVY_CACHE_DIR
+                trivy image --format cyclonedx --output sbom.json $ECR_REPO:$IMAGE_TAG
+                '''
             }
         }
+
 
         stage('🔐 ECR Login') {
             steps {
