@@ -50,6 +50,7 @@ pipeline {
                 sh 'docker push $ECR_REPO:$IMAGE_TAG'
             }
         }
+    }
 
     
 
