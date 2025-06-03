@@ -33,7 +33,7 @@ pipeline {
 
         stage('📄 Generate SBOM') {
             steps {
-                sh 'syft $ECR_REPO:$IMAGE_TAG -o cyclonedx-json > sbom.json'
+                sh 'trivy image --format cyclonedx --output sbom.json $ECR_REPO:$IMAGE_TAG'
             }
         }
 
@@ -51,17 +51,7 @@ pipeline {
             }
         }
 
-        stage('📤 Upload SBOM to Dependency-Track') {
-            steps {
-                sh '''
-                curl -X POST \
-                  -H "X-Api-Key: ${DEP_TRACK_API_KEY}" \
-                  -F "sbom=@sbom.json" \
-                  ${DEP_TRACK_URL}
-                '''
-            }
-        }
-    }
+    
 
     post {
         always {
