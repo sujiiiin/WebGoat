@@ -62,14 +62,9 @@ pipeline {
     
 
     post {
-        always {
-        archiveArtifacts artifacts: 'sbom.json', fingerprint: true
-        }
-        success {
-            echo "🎉 빌드 + ECR 푸시 + SBOM 업로드 완료!"
-        }
-        failure {
-            echo "❌ 빌드 실패! 로그 확인 필요"
-        }
+         always {
+              archiveArtifacts artifacts: '.tmp/sbom.json', fingerprint: true
+          }
     }
+
 }
