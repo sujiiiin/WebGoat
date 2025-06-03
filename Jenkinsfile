@@ -35,11 +35,13 @@ pipeline {
             steps {
                 sh '''
                 export TRIVY_CACHE_DIR=$WORKSPACE/.trivycache
-                mkdir -p $TRIVY_CACHE_DIR
+                export TMPDIR=$WORKSPACE/.tmp
+                mkdir -p $TRIVY_CACHE_DIR $TMPDIR
                 trivy image --format cyclonedx --output sbom.json $ECR_REPO:$IMAGE_TAG
                 '''
             }
         }
+
 
 
         stage('🔐 ECR Login') {
