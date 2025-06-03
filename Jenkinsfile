@@ -34,12 +34,10 @@ pipeline {
         stage('📄 Generate SBOM') {
             steps {
                 sh '''
-                export TMPDIR=$WORKSPACE/.tmp
-                export TRIVY_CACHE_DIR=$WORKSPACE/.trivycache
-                mkdir -p $TMPDIR $TRIVY_CACHE_DIR
-
-                trivy image --format cyclonedx --output $TMPDIR/sbom.json $ECR_REPO:$IMAGE_TAG
+                    echo "[+] Generating CycloneDX SBOM..."
+                    mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom -Dcyclonedx.outputFormat=json
                 '''
+                archiveArtifacts artifacts: 'target/bom.json', fingerprint: true
             }
         }
 
@@ -57,14 +55,6 @@ pipeline {
                 sh 'docker push $ECR_REPO:$IMAGE_TAG'
             }
         }
-    }
-
-    
-
-    post {
-         always {
-              archiveArtifacts artifacts: '.tmp/sbom.json', fingerprint: true
-          }
     }
 
 }
