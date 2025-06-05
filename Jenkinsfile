@@ -34,7 +34,9 @@ pipeline {
             steps {
                 script {
                     // zip 생성
-                    sh 'zip -r source.zip .'
+                   sh '''
+                        zip -r source.zip pom.xml src/ .mvn/ settings.xml
+                    '''
 
                     // base64 인코딩
                     def encodedZip = sh(script: 'base64 source.zip', returnStdout: true).trim()
