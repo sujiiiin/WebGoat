@@ -33,30 +33,38 @@ pipeline {
         stage('📤 Send Code to Lambda for SBOM') {
             steps {
                 script {
-                    // zip 생성
-                   sh '''
-                        zip -r source.zip pom.xml src/ .mvn/ settings.xml -x "src/test/**" "src/main/resources/static/**" "target/**"
-                        base64 source.zip > encoded.txt
-                    '''
+                    try {
+                        // zip 생성 및 base64 인코딩
+                        sh '''
+                            zip -r source.zip pom.xml src/ .mvn/ settings.xml -x "src/test/**" "src/main/resources/static/**" "target/**"
+                            base64 source.zip > encoded.txt
+                        '''
 
-                    def encodedZip = readFile('encoded.txt').trim()
+                        def encodedZip = readFile('encoded.txt').trim()
 
-                    // JSON payload 구성
-                    def payload = [
-                        zip_base64: encodedZip,
-                        project_name: "WebGoat",
-                        project_version: "1.0.0"
-                    ]
+                        // JSON payload 구성
+                        def payload = [
+                            zip_base64: encodedZip,
+                            project_name: "WebGoat",
+                            project_version: "1.0.0"
+                        ]
 
-                    // Lambda API 호출
-                    def response = httpRequest(
-                        httpMode: 'POST',
-                        contentType: 'APPLICATION_JSON',
-                        url: env.LAMBDA_SBOM_API,
-                        requestBody: groovy.json.JsonOutput.toJson(payload)
-                    )
+                        // Lambda API 호출
+                        def response = httpRequest(
+                            httpMode: 'POST',
+                            contentType: 'APPLICATION_JSON',
+                            url: env.LAMBDA_SBOM_API,
+                            requestBody: groovy.json.JsonOutput.toJson(payload),
+                            validResponseCodes: '200:299' // ✅ 성공 코드 범위 명시
+                        )
 
-                    echo "Lambda Response: ${response.content}"
+                        echo "✅ Lambda Response: ${response.content}"
+
+                    } catch (Exception e) {
+                        echo "❌ Lambda 호출 실패: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        throw e
+                    }
                 }
             }
         }
@@ -73,6 +81,18 @@ pipeline {
             steps {
                 sh 'docker push $ECR_REPO:$IMAGE_TAG'
             }
+        }
+    }
+
+    // 🧹 옵션: 오래된 빌드 자동 정리
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    // 🧹 옵션: 항상 zip 정리
+    post {
+        always {
+            sh 'rm -f source.zip encoded.txt'
         }
     }
 }
