@@ -5,8 +5,8 @@ pipeline {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
-        REPO_URL = "https://github.com/sujiiiin/WebGoat.git"
         LAMBDA_SBOM_API = "https://7k76hsq129.execute-api.ap-northeast-2.amazonaws.com/generate-sbom"
+        PROJECT_UUID = "c5edd688-1d38-4826-9ebf-c86eabee0ffe"
     }
 
     stages {
@@ -24,34 +24,28 @@ pipeline {
 
         stage('🐳 Docker Build') {
             steps {
-                sh '''
-                docker build -t $ECR_REPO:$IMAGE_TAG .
-                '''
+                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
             }
         }
 
-        stage('📤 Upload Zip to S3 and Trigger Lambda') {
+        stage('📤 Upload to S3 and Trigger Lambda') {
             steps {
                 script {
                     def zipFile = "source.zip"
                     def s3Key = "sbom/${env.BUILD_ID}/${zipFile}"
-        
-                    // zip 생성
-                    sh "zip -r ${zipFile} pom.xml src/ .mvn/ settings.xml -x 'src/test/**' 'target/**'"
-        
-                    // S3 업로드
+
+                    // zip 만들고 S3 업로드
                     sh """
+                        zip -r ${zipFile} pom.xml src/ .mvn/ settings.xml -x 'src/test/**' 'target/**'
                         aws s3 cp ${zipFile} s3://jenkins-sbom-source/${s3Key} --region $REGION
                     """
-        
-                    // Lambda 호출
+
                     def payload = [
                         s3_bucket: "jenkins-sbom-source",
                         s3_key: s3Key,
-                        project_name: "webgoat",
-                        project_version: "1.0.0"
+                        project_uuid: env.PROJECT_UUID
                     ]
-        
+
                     def response = httpRequest(
                         httpMode: 'POST',
                         contentType: 'APPLICATION_JSON',
@@ -59,7 +53,7 @@ pipeline {
                         requestBody: groovy.json.JsonOutput.toJson(payload),
                         validResponseCodes: '200:299'
                     )
-        
+
                     echo "Lambda Response: ${response.content}"
                 }
             }
@@ -67,9 +61,7 @@ pipeline {
 
         stage('🔐 ECR Login') {
             steps {
-                sh '''
-                aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REPO
-                '''
+                sh 'aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REPO'
             }
         }
 
@@ -80,13 +72,9 @@ pipeline {
         }
     }
 
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-    }
-
     post {
         always {
-            sh 'rm -f source.zip'  // ✅ encoded.txt 제거!
+            sh 'rm -f source.zip'
         }
     }
 }
