@@ -6,8 +6,7 @@ pipeline {
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
         REPO_URL = "https://github.com/sujiiiin/WebGoat.git"
-        DEP_TRACK_URL = "http://13.125.17.184:8081/api/v1/bom"
-        DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
+        LAMBDA_SBOM_API = "https://7k76hsq129.execute-api.ap-northeast-2.amazonaws.com/generate-sbom"
     }
 
     stages {
@@ -31,16 +30,34 @@ pipeline {
             }
         }
 
-        stage('📄 Generate SBOM') {
+        stage('📤 Send Code to Lambda for SBOM') {
             steps {
-                sh '''
-                    echo "[+] Generating CycloneDX SBOM..."
-                    mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom -Dcyclonedx.outputFormat=json
-                '''
-                archiveArtifacts artifacts: 'target/bom.json', fingerprint: true
+                script {
+                    // zip 생성
+                    sh 'zip -r source.zip .'
+
+                    // base64 인코딩
+                    def encodedZip = sh(script: 'base64 source.zip', returnStdout: true).trim()
+
+                    // JSON payload 구성
+                    def payload = [
+                        zip_base64: encodedZip,
+                        project_name: "WebGoat",
+                        project_version: "1.0.0"
+                    ]
+
+                    // Lambda API 호출
+                    def response = httpRequest(
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        url: env.LAMBDA_SBOM_API,
+                        requestBody: groovy.json.JsonOutput.toJson(payload)
+                    )
+
+                    echo "Lambda Response: ${response.content}"
+                }
             }
         }
-
 
         stage('🔐 ECR Login') {
             steps {
@@ -56,5 +73,4 @@ pipeline {
             }
         }
     }
-
 }
