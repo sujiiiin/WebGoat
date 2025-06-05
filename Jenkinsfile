@@ -35,12 +35,11 @@ pipeline {
                 script {
                     // zip 생성
                    sh '''
-                        zip -r source.zip pom.xml src/ .mvn/ settings.xml -x "src/test/**"
+                        zip -r source.zip pom.xml src/ .mvn/ settings.xml -x "src/test/**" "src/main/resources/static/**" "target/**"
+                        base64 source.zip > encoded.txt
                     '''
 
-
-                    // base64 인코딩
-                    def encodedZip = sh(script: 'base64 source.zip', returnStdout: true).trim()
+                    def encodedZip = readFile('encoded.txt').trim()
 
                     // JSON payload 구성
                     def payload = [
