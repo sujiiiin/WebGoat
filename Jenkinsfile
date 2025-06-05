@@ -48,7 +48,7 @@ pipeline {
                     def payload = [
                         s3_bucket: "jenkins-sbom-source",
                         s3_key: s3Key,
-                        project_name: "WebGoat",
+                        project_name: "webgoat",
                         project_version: "1.0.0"
                     ]
         
