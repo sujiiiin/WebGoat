@@ -30,41 +30,37 @@ pipeline {
             }
         }
 
-        stage('📤 Send Code to Lambda for SBOM') {
+        stage('📤 Upload Zip to S3 and Trigger Lambda') {
             steps {
                 script {
-                    try {
-                        // zip 생성 및 base64 인코딩
-                        sh '''
-                            zip -r source.zip pom.xml src/ .mvn/ settings.xml -x "src/test/**" "src/main/resources/static/**" "target/**"
-                            base64 source.zip > encoded.txt
-                        '''
-
-                        def encodedZip = readFile('encoded.txt').trim()
-
-                        // JSON payload 구성
-                        def payload = [
-                            zip_base64: encodedZip,
-                            project_name: "WebGoat",
-                            project_version: "1.0.0"
-                        ]
-
-                        // Lambda API 호출
-                        def response = httpRequest(
-                            httpMode: 'POST',
-                            contentType: 'APPLICATION_JSON',
-                            url: env.LAMBDA_SBOM_API,
-                            requestBody: groovy.json.JsonOutput.toJson(payload),
-                            validResponseCodes: '200:299' // ✅ 성공 코드 범위 명시
-                        )
-
-                        echo "✅ Lambda Response: ${response.content}"
-
-                    } catch (Exception e) {
-                        echo "❌ Lambda 호출 실패: ${e.message}"
-                        currentBuild.result = 'FAILURE'
-                        throw e
-                    }
+                    def zipFile = "source.zip"
+                    def s3Key = "sbom/${env.BUILD_ID}/${zipFile}"
+        
+                    // zip 생성
+                    sh "zip -r ${zipFile} pom.xml src/ .mvn/ settings.xml -x 'src/test/**' 'target/**'"
+        
+                    // S3 업로드
+                    sh """
+                        aws s3 cp ${zipFile} s3://jenkins-sbom-source/${s3Key} --region $REGION
+                    """
+        
+                    // Lambda 호출
+                    def payload = [
+                        s3_bucket: "jenkins-sbom-source",
+                        s3_key: s3Key,
+                        project_name: "WebGoat",
+                        project_version: "1.0.0"
+                    ]
+        
+                    def response = httpRequest(
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        url: env.LAMBDA_SBOM_API,
+                        requestBody: groovy.json.JsonOutput.toJson(payload),
+                        validResponseCodes: '200:299'
+                    )
+        
+                    echo "Lambda Response: ${response.content}"
                 }
             }
         }
@@ -84,15 +80,13 @@ pipeline {
         }
     }
 
-    // 🧹 옵션: 오래된 빌드 자동 정리
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
-    // 🧹 옵션: 항상 zip 정리
     post {
         always {
-            sh 'rm -f source.zip encoded.txt'
+            sh 'rm -f source.zip'  // ✅ encoded.txt 제거!
         }
     }
 }
