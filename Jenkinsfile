@@ -26,13 +26,16 @@ pipeline {
             }
         }
 
-        stage('📄 Generate SBOM (via CDXGEN EC2)') {
+       stage('📄 Generate SBOM (via CDXGEN EC2)') {
             steps {
                 sh '''
                     echo "[+] CDXGEN EC2가 Jenkins EC2에 SSH 접속하여 SBOM 생성"
-                    ssh $CDXGEN_HOST "
-                        ssh ec2-user@$(hostname -I | awk '{print $1}') '
-                            cd $PROJECT_DIR && \
+        
+                    # CDXGEN EC2에 접속 → 그 안에서 Jenkins EC2에 접속 → cdxgen 실행
+                    ssh ec2-user@172.31.5.158 "
+                        ssh-keyscan -H 172.31.33.68 >> ~/.ssh/known_hosts && \
+                        ssh ec2-user@172.31.33.68 '
+                            cd /var/lib/jenkins/workspace/$JOB_NAME && \
                             cdxgen -o sbom.json
                         '
                     "
