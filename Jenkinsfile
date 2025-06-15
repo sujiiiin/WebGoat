@@ -22,19 +22,15 @@ pipeline {
             }
         }
 
-        stage('📄 Generate SBOM with Docker') {
-          steps {
-            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-              sh '''
-                docker run --rm \
-                  -v "$WORKSPACE":/workspace \
-                  -w /workspace \
-                  cyclonedx/cyclonedx-cli:latest \
-                  app -i . -o bom.json
-              '''
+        stage('📄 Generate SBOM') {
+            steps {
+                sh '''
+                    echo "[+] Generating SBOM with cdxgen..."
+                    cdxgen -o sbom.json
+                '''
             }
-          }
         }
+
 
       
 
