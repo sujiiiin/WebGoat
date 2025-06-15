@@ -57,7 +57,7 @@ pipeline {
                 sh 'docker push $ECR_REPO:$IMAGE_TAG'
             }
         }
-
+    } // ← stages 블록 닫기
 
     post {
         always {
