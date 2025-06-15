@@ -22,31 +22,21 @@ pipeline {
             }
         }
 
-        stage('📄 Generate SBOM') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh '''
-                        echo "[+] Generating SBOM using CycloneDX CLI..."
-                        cyclonedx app -i . -o bom.json
-                    '''
-                }
+        stage('📄 Generate SBOM with Docker') {
+          steps {
+            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+              sh '''
+                docker run --rm \
+                  -v "$WORKSPACE":/workspace \
+                  -w /workspace \
+                  cyclonedx/cyclonedx-cli:latest \
+                  app -i . -o bom.json
+              '''
             }
+          }
         }
 
-        stage('📤 Upload SBOM to Dependency-Track') {
-            when {
-                expression { fileExists('bom.json') }
-            }
-            steps {
-                sh '''
-                    echo "[+] Uploading SBOM to Dependency-Track..."
-                    curl -X PUT "$DEP_TRACK_URL" \
-                         -H "X-Api-Key: $DEP_TRACK_API_KEY" \
-                         -H "Content-Type: application/json" \
-                         --data @bom.json
-                '''
-            }
-        }
+      
 
         stage('🐳 Docker Build') {
             steps {
