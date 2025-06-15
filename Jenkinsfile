@@ -28,18 +28,19 @@ pipeline {
 
        stage('📄 Generate SBOM (via CDXGEN EC2)') {
             steps {
-                sh '''
-                    echo "[+] CDXGEN EC2가 Jenkins EC2에 SSH 접속하여 SBOM 생성"
+                script {
+                    def jenkinsIp = "172.31.33.68"
+                    def jobPath = "/var/lib/jenkins/workspace/${env.JOB_NAME}"
         
-                    # CDXGEN EC2에 접속 → 그 안에서 Jenkins EC2에 접속 → cdxgen 실행
-                    ssh ec2-user@172.31.5.158 "
-                        ssh-keyscan -H 172.31.33.68 >> ~/.ssh/known_hosts && \
-                        ssh ec2-user@172.31.33.68 '
-                            cd /var/lib/jenkins/workspace/$JOB_NAME && \
-                            cdxgen -o sbom.json
-                        '
-                    "
-                '''
+                    sh """
+                        echo "[+] CDXGEN EC2가 Jenkins EC2에 SSH 접속하여 SBOM 생성"
+        
+                        ssh ec2-user@172.31.5.158 \\
+                          "ssh-keyscan -H ${jenkinsIp} >> ~/.ssh/known_hosts && \\
+                           ssh ec2-user@${jenkinsIp} \\
+                             'cd ${jobPath} && cdxgen -o sbom.json'"
+                    """
+                }
             }
         }
 
