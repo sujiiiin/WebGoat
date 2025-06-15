@@ -5,8 +5,8 @@ pipeline {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
-        LAMBDA_SBOM_API = "https://7k76hsq129.execute-api.ap-northeast-2.amazonaws.com/generate-sbom"
-        PROJECT_UUID = "c5edd688-1d38-4826-9ebf-c86eabee0ffe"
+        DEP_TRACK_URL = "http://<dependency-track-ip>:8081/api/v1/bom"  // 필요 시 수정
+        DEP_TRACK_API_KEY = credentials('dependency-track-api-key')     // Jenkins Credentials 등록 필요
     }
 
     stages {
@@ -28,37 +28,6 @@ pipeline {
             }
         }
 
-        stage('📤 Upload to S3 and Trigger Lambda') {
-            steps {
-                script {
-                    def zipFile = "source.zip"
-                    def s3Key = "sbom/${env.BUILD_ID}/${zipFile}"
-
-                    // zip 만들고 S3 업로드
-                    sh """
-                        zip -r ${zipFile} pom.xml src/ .mvn/ settings.xml -x 'src/test/**' 'target/**'
-                        aws s3 cp ${zipFile} s3://jenkins-sbom-source/${s3Key} --region $REGION
-                    """
-
-                    def payload = [
-                        s3_bucket: "jenkins-sbom-source",
-                        s3_key: s3Key,
-                        project_uuid: env.PROJECT_UUID
-                    ]
-
-                    def response = httpRequest(
-                        httpMode: 'POST',
-                        contentType: 'APPLICATION_JSON',
-                        url: env.LAMBDA_SBOM_API,
-                        requestBody: groovy.json.JsonOutput.toJson(payload),
-                        validResponseCodes: '200:299'
-                    )
-
-                    echo "Lambda Response: ${response.content}"
-                }
-            }
-        }
-
         stage('🔐 ECR Login') {
             steps {
                 sh 'aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REPO'
@@ -70,11 +39,37 @@ pipeline {
                 sh 'docker push $ECR_REPO:$IMAGE_TAG'
             }
         }
+
+        stage('📄 Generate SBOM with CycloneDX CLI') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh '''
+                        echo "[+] Generating SBOM using CycloneDX CLI..."
+                        cyclonedx app -i . -o bom.json
+                    '''
+                }
+            }
+        }
+
+        stage('📤 Upload SBOM to Dependency-Track') {
+            when {
+                expression { fileExists('bom.json') }
+            }
+            steps {
+                sh '''
+                    echo "[+] Uploading SBOM to Dependency-Track..."
+                    curl -X PUT "$DEP_TRACK_URL" \
+                         -H "X-Api-Key: $DEP_TRACK_API_KEY" \
+                         -H "Content-Type: application/json" \
+                         --data @bom.json
+                '''
+            }
+        }
     }
 
     post {
         always {
-            sh 'rm -f source.zip'
+            sh 'rm -f bom.json source.zip || true'
         }
     }
 }
