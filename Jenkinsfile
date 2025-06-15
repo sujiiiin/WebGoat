@@ -8,7 +8,7 @@ pipeline {
         DEP_TRACK_URL = "http://<dependency-track-ip>:8081/api/v1/bom"
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
 
-        CDXGEN_HOST = "ec2-user@172.31.5.158"  // CDXGEN 설치된 EC2의 Private IP
+        CDXGEN_HOST = "ec2-user@172.31.33.68"  // CDXGEN 설치된 EC2의 Private IP
         PROJECT_DIR = "/var/lib/jenkins/workspace/${env.JOB_NAME}"
         SBOM_PATH = "${PROJECT_DIR}/sbom.json"
     }
