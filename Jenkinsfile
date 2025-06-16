@@ -9,7 +9,6 @@ pipeline {
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
         SBOM_EC2_USER = "ec2-user"
         SBOM_EC2_IP = "172.31.11.127"
-        SSH_KEY_PATH = "~/.ssh/jenkins-sbom-key"
     }
 
     stages {
@@ -34,21 +33,22 @@ pipeline {
                     echo "📍 REPO URL: ${repoUrl}"
                     echo "📁 Project Name: ${repoName}"
 
-                    def remoteCmd = """
-                        ssh -i ${env.SSH_KEY_PATH} -o StrictHostKeyChecking=no ${env.SBOM_EC2_USER}@${env.SBOM_EC2_IP} '
-                            echo "[+] 클린 작업: /tmp/${repoName} 제거"
-                            rm -rf /tmp/${repoName} && \\
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-sbom-key', keyFileVariable: 'SSH_KEY')]) {
+                        def remoteCmd = """
+                            ssh -i \$SSH_KEY -o StrictHostKeyChecking=no ${env.SBOM_EC2_USER}@${env.SBOM_EC2_IP} '
+                                echo "[+] 클린 작업: /tmp/${repoName} 제거"
+                                rm -rf /tmp/${repoName} && \\
 
-                            echo "[+] Git 저장소 클론: ${repoUrl}"
-                            git clone ${repoUrl} /tmp/${repoName} && \\
+                                echo "[+] Git 저장소 클론: ${repoUrl}"
+                                git clone ${repoUrl} /tmp/${repoName} && \\
 
-                            echo "[+] CDXGEN 실행"
-                            cd /tmp/${repoName} && \\
-                            docker run --rm -v \$(pwd):/app cdxgen-java17 -o sbom.json
-                        '
-                    """
-
-                    sh remoteCmd
+                                echo "[+] CDXGEN 실행"
+                                cd /tmp/${repoName} && \\
+                                docker run --rm -v \$(pwd):/app cdxgen-java17 -o sbom.json
+                            '
+                        """
+                        sh remoteCmd
+                    }
                 }
             }
         }
