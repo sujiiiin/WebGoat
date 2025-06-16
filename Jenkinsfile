@@ -8,7 +8,6 @@ pipeline {
         DEP_TRACK_URL = "http://<dependency-track-ip>:8081/api/v1/bom"
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
         SBOM_EC2 = "ec2-user@172.31.11.127"
-
         PROJECT_DIR = "/var/lib/jenkins/workspace/${env.JOB_NAME}"
     }
 
@@ -34,16 +33,21 @@ pipeline {
                     echo "📍 REPO URL: ${repoUrl}"
                     echo "📁 Project Name: ${repoName}"
 
-                    sh """
+                    def remoteCmd = """
                         ssh -o StrictHostKeyChecking=no ${env.SBOM_EC2} '
+                            echo "[+] 클린 작업: /tmp/${repoName} 제거"
+                            rm -rf /tmp/${repoName} && \\
+                            
                             echo "[+] Git 저장소 클론: ${repoUrl}"
-                            git clone ${repoUrl} /tmp/\${repoName} && \
-                    
+                            git clone ${repoUrl} /tmp/${repoName} && \\
+
                             echo "[+] CDXGEN 실행"
-                            cd /tmp/\${repoName} && \
-                            docker run --rm -v \\$(pwd):/app cdxgen-java17 -o sbom.json
+                            cd /tmp/${repoName} && \\
+                            docker run --rm -v \$(pwd):/app cdxgen-java17 -o sbom.json
                         '
                     """
+
+                    sh remoteCmd
                 }
             }
         }
