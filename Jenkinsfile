@@ -7,10 +7,11 @@ pipeline {
         REGION = "ap-northeast-2"
         DEP_TRACK_URL = "http://<dependency-track-ip>:8081/api/v1/bom"
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
+        SBOM_EC2 = "ec2-user@172.31.11.127"
 
-        CDXGEN_HOST = "ec2-user@172.31.5.158"  // CDXGEN 설치된 EC2의 Private IP
+        
         PROJECT_DIR = "/var/lib/jenkins/workspace/${env.JOB_NAME}"
-        SBOM_PATH = "${PROJECT_DIR}/sbom.json"
+        
     }
 
     stages {
@@ -26,19 +27,27 @@ pipeline {
             }
         }
 
-       stage('📄 Generate SBOM (via CDXGEN EC2)') {
+       stage('🚀 Generate SBOM via CDXGEN Docker') {
             steps {
                 script {
-                    def jenkinsIp = "172.31.33.68"
-                    def jobPath = "/var/lib/jenkins/workspace/${env.JOB_NAME}"
-        
+                    def repoUrl = scm.userRemoteConfigs[0].url
+                    def repoName = repoUrl.tokenize('/').last().replace('.git', '')
+
+                    echo "📍 REPO URL: ${repoUrl}"
+                    echo "📁 Project Name: ${repoName}"
+
                     sh """
-                        echo "[+] CDXGEN EC2가 Jenkins EC2에 SSH 접속하여 SBOM 생성"
-        
-                        ssh ec2-user@172.31.5.158 \\
-                          "ssh-keyscan -H ${jenkinsIp} >> ~/.ssh/known_hosts && \\
-                           ssh ec2-user@${jenkinsIp} \\
-                             'cd ${jobPath} && cdxgen -o sbom.json'"
+                    ssh -o StrictHostKeyChecking=no \$SBOM_EC2 '
+                        echo "[+] 클린 작업: /tmp/${repoName} 제거"
+                        rm -rf /tmp/${repoName} && \
+
+                        echo "[+] Git 저장소 클론: ${repoUrl}"
+                        git clone ${repoUrl} /tmp/${repoName} && \
+
+                        echo "[+] CDXGEN 실행"
+                        cd /tmp/${repoName} && \
+                        docker run --rm -v \\$(pwd):/app cdxgen-java17 -o sbom.json
+                    '
                     """
                 }
             }
