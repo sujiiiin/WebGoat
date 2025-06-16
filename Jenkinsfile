@@ -35,17 +35,14 @@ pipeline {
                     echo "📁 Project Name: ${repoName}"
 
                     sh """
-                    ssh -o StrictHostKeyChecking=no ${env.SBOM_EC2} '
-                        echo "[+] 클린 작업: /tmp/${repoName} 제거"
-                        rm -rf /tmp/${repoName} && \
-
-                        echo "[+] Git 저장소 클론: ${repoUrl}"
-                        git clone ${repoUrl} /tmp/${repoName} && \
-
-                        echo "[+] CDXGEN 실행"
-                        cd /tmp/\${repoName} && \
-                        docker run --rm -v \\$(pwd):/app cdxgen-java17 -o sbom.json
-                    '
+                        ssh -o StrictHostKeyChecking=no ${env.SBOM_EC2} '
+                            echo "[+] Git 저장소 클론: ${repoUrl}"
+                            git clone ${repoUrl} /tmp/\${repoName} && \
+                    
+                            echo "[+] CDXGEN 실행"
+                            cd /tmp/\${repoName} && \
+                            docker run --rm -v \\$(pwd):/app cdxgen-java17 -o sbom.json
+                        '
                     """
                 }
             }
