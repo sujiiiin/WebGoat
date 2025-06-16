@@ -9,9 +9,7 @@ pipeline {
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
         SBOM_EC2 = "ec2-user@172.31.11.127"
 
-        
         PROJECT_DIR = "/var/lib/jenkins/workspace/${env.JOB_NAME}"
-        
     }
 
     stages {
@@ -27,7 +25,7 @@ pipeline {
             }
         }
 
-       stage('🚀 Generate SBOM via CDXGEN Docker') {
+        stage('🚀 Generate SBOM via CDXGEN Docker') {
             steps {
                 script {
                     def repoUrl = scm.userRemoteConfigs[0].url
@@ -37,7 +35,7 @@ pipeline {
                     echo "📁 Project Name: ${repoName}"
 
                     sh """
-                    ssh -o StrictHostKeyChecking=no \$SBOM_EC2 '
+                    ssh -o StrictHostKeyChecking=no ${env.SBOM_EC2} '
                         echo "[+] 클린 작업: /tmp/${repoName} 제거"
                         rm -rf /tmp/${repoName} && \
 
@@ -45,7 +43,7 @@ pipeline {
                         git clone ${repoUrl} /tmp/${repoName} && \
 
                         echo "[+] CDXGEN 실행"
-                        cd /tmp/${repoName} && \
+                        cd /tmp/\${repoName} && \
                         docker run --rm -v \\$(pwd):/app cdxgen-java17 -o sbom.json
                     '
                     """
@@ -55,22 +53,22 @@ pipeline {
 
         stage('🐳 Docker Build') {
             steps {
-                sh 'docker build -t $ECR_REPO:$IMAGE_TAG .'
+                sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
             }
         }
 
         stage('🔐 ECR Login') {
             steps {
-                sh 'aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_REPO'
+                sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
             }
         }
 
         stage('🚀 Push to ECR') {
             steps {
-                sh 'docker push $ECR_REPO:$IMAGE_TAG'
+                sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
             }
         }
-    } // ← stages 블록 닫기
+    }
 
     post {
         always {
