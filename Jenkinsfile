@@ -44,7 +44,8 @@ pipeline {
 
                                 echo "[+] CDXGEN 실행"
                                 cd /tmp/${repoName} && \\
-                                docker run --rm -v \$(pwd):/app cdxgen-java17 -o sbom.json && \\
+                                docker run --rm -v \$(pwd):/app ghcr.io/cyclonedx/cdxgen-java11:v11 -o sbom.json && \\
+
 
                                 echo "[+] Dependency-Track 업로드"
                                 /home/ec2-user/upload-sbom.sh ${repoName}
