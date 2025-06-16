@@ -7,7 +7,9 @@ pipeline {
         REGION = "ap-northeast-2"
         DEP_TRACK_URL = "http://<dependency-track-ip>:8081/api/v1/bom"
         DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
-        SBOM_SSH_ALIAS = "sbom-ec2"  // .ssh/config에 정의한 호스트 별칭
+        SBOM_EC2_USER = "ec2-user"
+        SBOM_EC2_IP = "172.31.11.127"
+        SSH_KEY_PATH = "~/.ssh/jenkins-sbom-key"
     }
 
     stages {
@@ -33,7 +35,7 @@ pipeline {
                     echo "📁 Project Name: ${repoName}"
 
                     def remoteCmd = """
-                        ssh ${env.SBOM_SSH_ALIAS} '
+                        ssh -i ${env.SSH_KEY_PATH} -o StrictHostKeyChecking=no ${env.SBOM_EC2_USER}@${env.SBOM_EC2_IP} '
                             echo "[+] 클린 작업: /tmp/${repoName} 제거"
                             rm -rf /tmp/${repoName} && \\
 
