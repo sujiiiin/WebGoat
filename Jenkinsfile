@@ -40,12 +40,15 @@ pipeline {
                                 echo "[+] Git 저장소 클론: ${repoUrl}"
                                 git clone ${repoUrl} /tmp/${repoName} && \\
 
-                                echo "[+] Java 버전 감지"
-                                IMAGE_TAG=\$(bash /home/ec2-user/detect-java-version.sh /tmp/${repoName}) && \
-        
-                                echo "[+] SBOM 생성"
-                                cd /tmp/${repoName} && \
-                                docker run --rm -v \$(pwd):/app ghcr.io/cyclonedx/cdxgen-\${IMAGE_TAG}:v\${IMAGE_TAG#java} -o sbom.json && \
+                                 echo "[+] Java/언어 감지"
+                                cd /tmp/${repoName} && \\
+                                bash /home/ec2-user/detect-java-version.sh && \\
+
+                                IMAGE_TAG=\$(cat /tmp/cdxgen_image_tag.txt) && \\
+                                echo "[+] 선택된 이미지 태그: \$IMAGE_TAG" && \\
+
+                                echo "[+] CDXGEN 실행"
+                                docker run --rm -v \$(pwd):/app ghcr.io/cyclonedx/cdxgen-\$IMAGE_TAG:latest -o sbom.json && \\
 
                                 echo "[+] Dependency-Track 업로드"
                                 /home/ec2-user/upload-sbom.sh ${repoName}
