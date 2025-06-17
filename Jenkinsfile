@@ -5,8 +5,6 @@ pipeline {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
         IMAGE_TAG = "latest"
         REGION = "ap-northeast-2"
-        DEP_TRACK_URL = "http://<dependency-track-ip>:8081/api/v1/bom"
-        DEP_TRACK_API_KEY = credentials('dependency-track-api-key')
         SBOM_EC2_USER = "ec2-user"
         SBOM_EC2_IP = "172.31.11.127"
     }
