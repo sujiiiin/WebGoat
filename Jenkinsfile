@@ -44,15 +44,15 @@ pipeline {
                                 cd /tmp/${repoName} && \\
                                 bash /home/ec2-user/detect-java-version.sh && \\
 
-                               IMAGE_TAG=\$(cat /tmp/cdxgen_image_tag.txt) && \\
+                                IMAGE_TAG=\$(cat /tmp/cdxgen_image_tag.txt) && \\
                                 echo "[+] 선택된 이미지 태그: \$IMAGE_TAG" && \\
-        
-                                if [ "\$IMAGE_TAG" = "java" ]; then
-                                  echo "[🚀] CDXGEN(Java) 도커 실행" && \\
-                                  docker run --rm -v \$(pwd):/app ghcr.io/cyclonedx/cdxgen-java:latest -o sbom.json
-                                else
+
+                                if [ "\$IMAGE_TAG" = "cli" ]; then
                                   echo "[🚀] CDXGEN(CLI) 도커 실행" && \\
                                   docker run --rm -v \$(pwd):/app ghcr.io/cyclonedx/cdxgen:latest -o sbom.json
+                                else
+                                  echo "[🚀] CDXGEN(Java) 도커 실행 (\$IMAGE_TAG)" && \\
+                                  docker run --rm -v \$(pwd):/app ghcr.io/cyclonedx/cdxgen-\$IMAGE_TAG:latest -o sbom.json
                                 fi && \\
 
                                 echo "[+] Dependency-Track 업로드"
