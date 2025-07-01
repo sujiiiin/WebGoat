@@ -45,7 +45,7 @@ pipeline {
         
                                 echo "[+] 언어 및 Java 버전 감지"
                                 cd /tmp/${jobDir}
-                                bash /home/ec2-user/test/detect-java-test.sh
+                                bash /home/ec2-user/detect-test.sh
         
                                 IMAGE_TAG=\$(cat /tmp/${jobDir}/cdxgen_image_tag.txt)
                                 echo "[+] 선택된 이미지 태그: \$IMAGE_TAG"
@@ -59,7 +59,7 @@ pipeline {
                                 fi
         
                                 echo "[+] Dependency-Track 업로드 시작"
-                                /home/ec2-user/test/upload-sbom-test.sh ${jobDir}
+                                /home/ec2-user/upload-sbom.sh ${jobDir}
         
                                 echo "[🧹] 작업 디렉토리 정리"
                                 rm -rf /tmp/${jobDir}
