@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'master' }
 
     environment {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
@@ -23,6 +23,7 @@ pipeline {
         }
 
         stage('🚀 Generate SBOM via CDXGEN Docker') {
+            agent { label 'sca' }
             steps {
                 script {
                     def repoUrl = scm.userRemoteConfigs[0].url
