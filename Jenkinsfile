@@ -40,10 +40,5 @@ pipeline {
             }
         }
 
-        stage('Push to ECR') {
-            steps {
-                sh 'docker push $ECR_REPO:$IMAGE_TAG'
-            }
-        }
     }
 }
