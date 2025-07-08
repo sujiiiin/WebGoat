@@ -14,9 +14,6 @@ application security lessons.
 This program is a demonstration of common server-side application flaws. The
 exercises are intended to be used by people to learn about application security and
 penetration testing techniques.
-testtests
-testtestetstetst
-testestsetsts
 
 **WARNING 1:** *While running this program your machine will be extremely
 vulnerable to attack. You should disconnect from the Internet while using
