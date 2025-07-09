@@ -16,8 +16,7 @@ exercises are intended to be used by people to learn about application security 
 penetration testing techniques.
 testtestest
 testetstetstses
-testetstseteststes
-ㅅㄷㄴㅅㄴㅅ
+
 
 
 **WARNING 1:** *While running this program your machine will be extremely
