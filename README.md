@@ -11,7 +11,6 @@
 WebGoat is a deliberately insecure web application maintained by [OWASP](http://www.owasp.org/) designed to teach web
 application security lessons.
 testsetstst
-testsetst
 
 
 This program is a demonstration of common server-side application flaws. The
