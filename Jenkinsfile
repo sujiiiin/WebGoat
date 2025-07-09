@@ -24,31 +24,35 @@ pipeline {
             }
         }
 
-        stage('🚀 Generate SBOM for each commit') {
+       stage('🚀 Generate SBOM for each commit') {
             steps {
                 script {
                     sh """
                         rm -rf recent-commits && mkdir recent-commits
                         git clone --quiet --branch ${env.BRANCH} ${env.REPO_URL} recent-commits
                     """
-
+        
                     dir('recent-commits') {
+                        def fromCommit = env.GIT_PREVIOUS_COMMIT ?: 'HEAD^'
+                        def toCommit = env.GIT_COMMIT ?: 'HEAD'
+        
                         def commits = sh(
-                            script: "git log ${env.GIT_PREVIOUS_COMMIT}..${env.GIT_COMMIT} --pretty=format:'%H'",
+                            script: "git log ${fromCommit}..${toCommit} --pretty=format:'%H'",
                             returnStdout: true
-                        ).trim().split("\n")
-
-                        echo "📌 변경된 커밋 목록:\n${commits.join('\n')}"
-
-                        if (commits.size() == 0 || commits[0] == "") {
+                        ).trim().split("\n").findAll { it?.trim() }
+        
+                        echo "📌 이번 푸시에서 변경된 커밋 목록:\n${commits.join('\n')}"
+        
+                        if (commits.isEmpty()) {
                             echo "✅ 변경된 커밋이 없어 SBOM 작업 생략"
                         } else {
                             def jobs = [:]
+                            def repoName = env.REPO_URL.tokenize('/').last().replace('.git', '')
+        
                             for (int i = 0; i < commits.size(); i++) {
                                 def commitId = commits[i]
                                 def buildId = "${env.BUILD_NUMBER}-${i}"
-                                def repoName = env.REPO_URL.tokenize('/').last().replace('.git', '')
-
+        
                                 jobs["SBOM-${i}"] = {
                                     node('sca') {
                                         sh """
@@ -57,13 +61,14 @@ pipeline {
                                     }
                                 }
                             }
-
+        
                             parallel jobs
                         }
                     }
                 }
             }
         }
+
 
         stage('🐳 Docker Build') {
             steps {
