@@ -30,13 +30,20 @@ pipeline {
                 script {
                     def repoUrl = scm.userRemoteConfigs[0].url
                     def repoName = repoUrl.tokenize('/').last().replace('.git', '')
-                    
+        
+                    // 로그 디렉토리 생성
+                    sh 'mkdir -p /home/ec2-user/logs'
+        
+                    // 백그라운드로 실행 (nohup)
                     sh """
-                        /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}'
+                        nohup /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}' > /home/ec2-user/logs/sbom_${env.BUILD_NUMBER}.log 2>&1 &
                     """
+        
+                    echo "✅ SCA 분석이 백그라운드에서 시작되었습니다. 로그: /home/ec2-user/logs/sbom_${env.BUILD_NUMBER}.log"
                 }
             }
         }
+
 
 
 
