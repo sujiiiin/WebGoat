@@ -24,49 +24,16 @@ pipeline {
             }
         }
 
-       stage('🚀 Generate SBOM for each commit') {
+       stage('🚀 Generate SBOM via CDXGEN Docker') {
+            agent { label 'SCA' }
             steps {
                 script {
-                    def repoName = env.REPO_URL.tokenize('/').last().replace('.git', '')
-                    def buildTag = env.BUILD_TAG.replaceAll('[^a-zA-Z0-9]', '_')
-        
+                    def repoUrl = scm.userRemoteConfigs[0].url
+                    def repoName = repoUrl.tokenize('/').last().replace('.git', '')
+                    
                     sh """
-                        rm -rf recent-commits && mkdir recent-commits
-                        git clone --quiet --branch ${env.BRANCH} ${env.REPO_URL} recent-commits
+                        /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}'
                     """
-        
-                    def commitList = []
-                    dir('recent-commits') {
-                        def out = sh(
-                            script: "git log ${env.GIT_PREVIOUS_COMMIT}..${env.GIT_COMMIT} --pretty=format:'%H'",
-                            returnStdout: true
-                        ).trim()
-                        commitList = out.split("\n").findAll { it?.trim() }
-                    }
-        
-                    if (commitList.isEmpty()) {
-                        echo "✅ 변경된 커밋이 없어 SBOM 작업 생략"
-                        return
-                    }
-        
-                    echo "📌 변경된 커밋 목록:\n${commitList.join('\n')}"
-        
-                    def jobs = [:]
-                    for (int i = 0; i < commitList.size(); i++) {
-                        def commitId = commitList[i]
-                        def jobId = "${buildTag}_${i}"
-                        def id = i // 클로저 내 캡처 방지용
-        
-                        jobs["SBOM-${id}"] = {
-                            node('sca') {
-                                sh """
-                                    /home/ec2-user/run_sbom_pipeline.sh '${env.REPO_URL}' '${repoName}' '${jobId}' '${commitId}'
-                                """
-                            }
-                        }
-                    }
-        
-                    parallel jobs
                 }
             }
         }
