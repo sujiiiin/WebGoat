@@ -59,9 +59,4 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            sh 'rm -f sbom.json || true'
-        }
-    }
 }
