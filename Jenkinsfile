@@ -33,10 +33,9 @@ pipeline {
         
                     // 백그라운드로 실행 (nohup)
                     sh """
-                        nohup /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}' > /home/ec2-user/logs/sbom_${env.BUILD_NUMBER}.log 2>&1 &
+                         /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}' 
                     """
         
-                    echo "✅ SCA 분석이 백그라운드에서 시작되었습니다. 로그: /home/ec2-user/logs/sbom_${env.BUILD_NUMBER}.log"
                 }
             }
         }
