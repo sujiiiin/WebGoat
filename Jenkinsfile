@@ -31,9 +31,6 @@ pipeline {
                     def repoUrl = scm.userRemoteConfigs[0].url
                     def repoName = repoUrl.tokenize('/').last().replace('.git', '')
         
-                    // 로그 디렉토리 생성
-                    sh 'mkdir -p /home/ec2-user/logs'
-        
                     // 백그라운드로 실행 (nohup)
                     sh """
                         nohup /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}' > /home/ec2-user/logs/sbom_${env.BUILD_NUMBER}.log 2>&1 &
