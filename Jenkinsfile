@@ -30,14 +30,17 @@ pipeline {
                 script {
                     def repoUrl = scm.userRemoteConfigs[0].url
                     def repoName = repoUrl.tokenize('/').last().replace('.git', '')
+                    def buildId = env.BUILD_NUMBER
         
-                    // 백그라운드로 실행 (nohup)
                     sh """
-                         setsid /home/ec2-user/run_sbom_pipeline.sh "$REPO_URL" "$REPO_NAME" "$BUILD_ID" > /home/ec2-user/logs/sbom_${BUILD_ID}.log 2>&1 < /dev/null &
-                     """
+                        setsid /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1 < /dev/null &
+                    """
+        
+                    echo "✅ SBOM 파이프라인이 백그라운드에서 실행 중입니다. 로그: /home/ec2-user/logs/sbom_${buildId}.log"
                 }
             }
         }
+
 
 
 
