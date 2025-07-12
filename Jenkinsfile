@@ -34,17 +34,19 @@ pipeline {
                             def repoUrl = scm.userRemoteConfigs[0].url
                             def repoName = repoUrl.tokenize('/').last().replace('.git', '')
                             def buildId = env.BUILD_NUMBER
-
+                            def repoDir = "/tmp/${repoName}_${buildId}"   // <- 핵심
+                
                             catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                                 sh """
-                                    /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
+                                    /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' '${repoDir}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
                                 """
                             }
-
+                
                             echo "✅ SBOM 로그: /home/ec2-user/logs/sbom_${buildId}.log"
                         }
                     }
                 }
+
 
                 stage('🐳 Docker Build & Push') {
                     agent { label 'master' }
