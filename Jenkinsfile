@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'master' }
+    agent none
 
     environment {
         ECR_REPO = "590715976556.dkr.ecr.ap-northeast-2.amazonaws.com/whs/devops"
@@ -8,59 +8,65 @@ pipeline {
         SBOM_EC2_USER = "ec2-user"
         SBOM_EC2_IP = "172.31.11.127"
         REPO_URL = "https://github.com/sujiiiin/WebGoat.git"
-        BRANCH = "main"
     }
 
     stages {
         stage('📦 Checkout') {
+            agent { label 'master' }
             steps {
                 checkout scm
             }
         }
 
         stage('🔨 Build JAR') {
+            agent { label 'master' }
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-       stage('🚀 Generate SBOM via CDXGEN Docker') {
-            agent { label 'sca' }
-            steps {
-                script {
-                    def repoUrl = scm.userRemoteConfigs[0].url
-                    def repoName = repoUrl.tokenize('/').last().replace('.git', '')
-                    def buildId = env.BUILD_NUMBER
-        
-                    sh """
-                        /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
-                    """
+        stage('📦 병렬 분석 및 배포') {
+            parallel {
+                stage('🚀 Generate SBOM') {
+                    agent { label 'sca' }
+                    steps {
+                        script {
+                            def repoUrl = scm.userRemoteConfigs[0].url
+                            def repoName = repoUrl.tokenize('/').last().replace('.git', '')
+                            def buildId = env.BUILD_NUMBER
 
+                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                sh """
+                                    /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
+                                """
+                            }
+
+                            echo "✅ SBOM 로그: /home/ec2-user/logs/sbom_${buildId}.log"
+                        }
+                    }
+                }
+
+                stage('🐳 Docker Build & Push') {
+                    agent { label 'master' }
+                    stages {
+                        stage('🐳 Docker Build') {
+                            steps {
+                                sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
+                            }
+                        }
+                        stage('🔐 ECR Login') {
+                            steps {
+                                sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
+                            }
+                        }
+                        stage('🚀 Push to ECR') {
+                            steps {
+                                sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
+                            }
+                        }
+                    }
                 }
             }
         }
-
-
-
-
-
-        stage('🐳 Docker Build') {
-            steps {
-                sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
-            }
-        }
-
-        stage('🔐 ECR Login') {
-            steps {
-                sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
-            }
-        }
-
-        stage('🚀 Push to ECR') {
-            steps {
-                sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
-            }
-        }
     }
-
 }
