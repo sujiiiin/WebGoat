@@ -33,7 +33,7 @@ pipeline {
         
                     // 백그라운드로 실행 (nohup)
                     sh """
-                         nohup /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${env.BUILD_NUMBER}' > /home/ec2-user/logs/sbom_${env.BUILD_NUMBER}.log 2>&1 &
+                         tmux new-session -d -s sbom_${BUILD_ID} "/home/ec2-user/run_sbom_pipeline.sh '${REPO_URL}' '${REPO_NAME}' '${BUILD_ID}' > /home/ec2-user/logs/sbom_${BUILD_ID}.log 2>&1"
                     """
         
                 }
