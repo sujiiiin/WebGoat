@@ -33,10 +33,9 @@ pipeline {
                     def buildId = env.BUILD_NUMBER
         
                     sh """
-                        setsid /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1 < /dev/null &
+                        /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
                     """
-        
-                    echo "✅ SBOM 파이프라인이 백그라운드에서 실행 중입니다. 로그: /home/ec2-user/logs/sbom_${buildId}.log"
+
                 }
             }
         }
