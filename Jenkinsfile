@@ -46,6 +46,7 @@ pipeline {
                         }
                     }
                 }
+             }
 
 
                 stage('🐳 Docker Build & Push') {
@@ -68,7 +69,7 @@ pipeline {
                         }
                     }
                 }
-            }
+            
         }
     }
 }
