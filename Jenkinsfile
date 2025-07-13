@@ -25,11 +25,11 @@ pipeline {
             }
         }
 
-        stage('📦 병렬 분석 및 배포') {
+        stage('🧪 병렬 실행 시작') {
             parallel {
-                // ✅ SBOM 병렬 처리
-                '🚀 Generate SBOM': {
-                    node('sca') {
+                stage('🚀 Generate SBOM') {
+                    agent { label 'sca' }
+                    steps {
                         script {
                             def repoUrl = scm.userRemoteConfigs[0].url
                             def repoName = repoUrl.tokenize('/').last().replace('.git', '')
@@ -45,20 +45,27 @@ pipeline {
                             echo "✅ SBOM 로그: /home/ec2-user/logs/sbom_${buildId}.log"
                         }
                     }
-                },
+                }
+             
+            }
+        }
 
-                // ✅ Docker Build & Push 병렬 처리
-                '🐳 Docker Build & Push': {
-                    node('master') {
-                        stage('🐳 Docker Build') {
-                            sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
-                        }
-                        stage('🔐 ECR Login') {
-                            sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
-                        }
-                        stage('🚀 Push to ECR') {
-                            sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
-                        }
+        stage('🐳 Docker Build & Push') {
+            agent { label 'master' }
+            stages {
+                stage('🐳 Docker Build') {
+                    steps {
+                        sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
+                    }
+                }
+                stage('🔐 ECR Login') {
+                    steps {
+                        sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
+                    }
+                }
+                stage('🚀 Push to ECR') {
+                    steps {
+                        sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
                     }
                 }
             }
