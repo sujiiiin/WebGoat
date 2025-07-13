@@ -27,49 +27,41 @@ pipeline {
 
         stage('📦 병렬 분석 및 배포') {
             parallel {
-                stage('🚀 Generate SBOM') {
-                    agent { label 'sca' }
-                    steps {
+                // ✅ SBOM 병렬 처리
+                '🚀 Generate SBOM': {
+                    node('sca') {
                         script {
                             def repoUrl = scm.userRemoteConfigs[0].url
                             def repoName = repoUrl.tokenize('/').last().replace('.git', '')
                             def buildId = env.BUILD_NUMBER
-                            def repoDir = "/tmp/${repoName}_${buildId}"   // <- 핵심
-                
+                            def repoDir = "/tmp/${repoName}_${buildId}"
+
                             catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                                 sh """
                                     /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' '${repoDir}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
                                 """
                             }
-                
+
                             echo "✅ SBOM 로그: /home/ec2-user/logs/sbom_${buildId}.log"
                         }
                     }
-                }
-             }
+                },
 
-
-                stage('🐳 Docker Build & Push') {
-                    agent { label 'master' }
-                    stages {
+                // ✅ Docker Build & Push 병렬 처리
+                '🐳 Docker Build & Push': {
+                    node('master') {
                         stage('🐳 Docker Build') {
-                            steps {
-                                sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
-                            }
+                            sh "docker build -t ${env.ECR_REPO}:${env.IMAGE_TAG} ."
                         }
                         stage('🔐 ECR Login') {
-                            steps {
-                                sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
-                            }
+                            sh "aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${env.ECR_REPO}"
                         }
                         stage('🚀 Push to ECR') {
-                            steps {
-                                sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
-                            }
+                            sh "docker push ${env.ECR_REPO}:${env.IMAGE_TAG}"
                         }
                     }
                 }
-            
+            }
         }
     }
 }
