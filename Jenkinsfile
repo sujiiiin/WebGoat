@@ -35,8 +35,7 @@ pipeline {
                  
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         sh """
-                            echo "[+] SBOM 생성 시작 (nohup)"
-                            nohup /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' > /tmp/sbom_${repoName}_${buildId}.log 2>&1 &
+                            /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}'
                         """
                     }
                 }
