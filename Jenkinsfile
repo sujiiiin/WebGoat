@@ -26,7 +26,7 @@ pipeline {
         }
 
          stage('🧪 병렬 실행 제거: SBOM 생성 nohup') {
-            agent { label 'SCA' }
+            agent { label 'sca' }
             steps {
                 script {
                     def repoUrl = scm.userRemoteConfigs[0].url
