@@ -25,28 +25,21 @@ pipeline {
             }
         }
 
-        stage('🧪 병렬 실행 시작') {
-            parallel {
-                stage('🚀 Generate SBOM') {
-                    agent { label 'sca' }
-                    steps {
-                        script {
-                            def repoUrl = scm.userRemoteConfigs[0].url
-                            def repoName = repoUrl.tokenize('/').last().replace('.git', '')
-                            def buildId = env.BUILD_NUMBER
-                            def repoDir = "/tmp/${repoName}_${buildId}"
-
-                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                                sh """
-                                    /home/ec2-user/run_sbom_pipeline.sh '${repoUrl}' '${repoName}' '${buildId}' '${repoDir}' > /home/ec2-user/logs/sbom_${buildId}.log 2>&1
-                                """
-                            }
-
-                            echo "✅ SBOM 로그: /home/ec2-user/logs/sbom_${buildId}.log"
-                        }
+         stage('🧪 병렬 실행 제거: SBOM 생성 nohup') {
+            agent { label 'SCA' }
+            steps {
+                script {
+                    def repoUrl = scm.userRemoteConfigs[0].url
+                    def repoName = repoUrl.tokenize('/').last().replace('.git', '')
+                    def buildId = env.BUILD_NUMBER
+                 
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh """
+                            echo "[+] SBOM 생성 시작 (nohup)"
+                            nohup /home/ec2-user/run_sbom_pipeline1.sh '${repoUrl}' '${repoName}' '${buildId}' > /tmp/sbom_${repoName}_${buildId}.log 2>&1 &
+                        """
                     }
                 }
-             
             }
         }
 
